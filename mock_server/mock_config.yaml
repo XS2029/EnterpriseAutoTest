@@ -1,0 +1,93 @@
+# Mock API 配置文件
+# 用于定义模拟接口的响应规则
+
+# 登录接口配置
+login:
+  # 正常登录用户池（用于验证用户名密码）
+  valid_users:
+    admin:
+      password: "admin123"
+      role: "admin"
+      status: "active"
+    test001:
+      password: "123456"
+      role: "user"
+      status: "active"
+    manager01:
+      password: "manager123"
+      role: "manager"
+      status: "active"
+  # 锁定账号列表
+  locked_users:
+    - "locked_user"
+    - "disabled001"
+  # 错误密码返回状态码
+  error_password_code: 401
+  # 账号锁定返回状态码
+  locked_account_code: 403
+  # Token前缀
+  token_prefix: "mock_token_"
+
+# 员工数据（用于查询接口）
+employees:
+  - id: 1
+    name: "张三"
+    department: "技术部"
+    position: "软件工程师"
+    phone: "13800138001"
+    email: "zhangsan@company.com"
+    status: "在职"
+  - id: 2
+    name: "李四"
+    department: "市场部"
+    position: "市场专员"
+    phone: "13800138002"
+    email: "lisi@company.com"
+    status: "在职"
+  - id: 3
+    name: "王五"
+    department: "技术部"
+    position: "测试工程师"
+    phone: "13800138003"
+    email: "wangwu@company.com"
+    status: "在职"
+  - id: 4
+    name: "赵六"
+    department: "人事部"
+    position: "HRBP"
+    phone: "13800138004"
+    email: "zhaoliu@company.com"
+    status: "在职"
+  - id: 5
+    name: "孙七"
+    department: "财务部"
+    position: "财务分析师"
+    phone: "13800138005"
+    email: "sunqi@company.com"
+    status: "离职"
+  - id: 6
+    name: "周八"
+    department: "技术部"
+    position: "架构师"
+    phone: "13800138006"
+    email: "zhouba@company.com"
+    status: "在职"
+  - id: 7
+    name: "吴九"
+    department: "产品部"
+    position: "产品经理"
+    phone: "13800138007"
+    email: "wujiu@company.com"
+    status: "在职"
+  - id: 8
+    name: "郑十"
+    department: "技术部"
+    position: "前端开发"
+    phone: "13800138008"
+    email: "zhengshi@company.com"
+    status: "在职"
+
+# 审批数据存储（内存模拟）
+approvals:
+  next_id: 1001
+  records: []

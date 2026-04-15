@@ -1,0 +1,137 @@
+# 登录模块接口测试数据
+# 用于 Pytest 参数化测试
+
+# ========== 正向用例 ==========
+- casename: "登录成功-正常用户名密码"
+  module: "登录模块"
+  description: "使用正确的用户名和密码登录"
+  request:
+    method: "POST"
+    url: "/api/login"
+    json:
+      username: "test001"
+      password: "123456"
+  validate:
+    - eq: ["status_code", 200]
+    - eq: ["json.code", 0]
+    - contains: ["json.message", "成功"]
+    - not_null: ["json.data.token"]
+    - eq: ["json.data.username", "test001"]
+
+- casename: "登录成功-管理员账号"
+  module: "登录模块"
+  description: "使用管理员账号登录"
+  request:
+    method: "POST"
+    url: "/api/login"
+    json:
+      username: "admin"
+      password: "admin123"
+  validate:
+    - eq: ["status_code", 200]
+    - eq: ["json.code", 0]
+    - eq: ["json.data.role", "admin"]
+
+# ========== 反向用例 ==========
+- casename: "登录失败-错误密码"
+  module: "登录模块"
+  description: "使用正确的用户名但错误的密码"
+  request:
+    method: "POST"
+    url: "/api/login"
+    json:
+      username: "test001"
+      password: "wrong_password"
+  validate:
+    - eq: ["status_code", 401]
+    - eq: ["json.code", 401]
+    - contains: ["json.message", "用户名或密码错误"]
+
+- casename: "登录失败-不存在的用户"
+  module: "登录模块"
+  description: "使用系统中不存在的用户名"
+  request:
+    method: "POST"
+    url: "/api/login"
+    json:
+      username: "nonexistent_user"
+      password: "any_password"
+  validate:
+    - eq: ["status_code", 401]
+    - eq: ["json.code", 401]
+
+- casename: "登录失败-账号被锁定"
+  module: "登录模块"
+  description: "使用已被锁定的账号登录"
+  request:
+    method: "POST"
+    url: "/api/login"
+    json:
+      username: "locked_user"
+      password: "any_password"
+  validate:
+    - eq: ["status_code", 403]
+    - eq: ["json.code", 403]
+    - contains: ["json.message", "锁定"]
+
+- casename: "登录失败-账号被禁用"
+  module: "登录模块"
+  description: "使用已被禁用的账号登录"
+  request:
+    method: "POST"
+    url: "/api/login"
+    json:
+      username: "disabled001"
+      password: "any_password"
+  validate:
+    - eq: ["status_code", 403]  # Mock 服务将禁用账号也返回 403
+    - eq: ["json.code", 403]
+
+# ========== 边界/异常用例 ==========
+- casename: "登录失败-用户名为空"
+  module: "登录模块"
+  description: "用户名为空字符串"
+  request:
+    method: "POST"
+    url: "/api/login"
+    json:
+      username: ""
+      password: "123456"
+  validate:
+    - eq: ["status_code", 401]  # Mock 服务会验证非空，返回 401
+
+- casename: "登录失败-密码为空"
+  module: "登录模块"
+  description: "密码为空字符串"
+  request:
+    method: "POST"
+    url: "/api/login"
+    json:
+      username: "test001"
+      password: ""
+  validate:
+    - eq: ["status_code", 401]
+
+- casename: "登录失败-超长用户名"
+  module: "登录模块"
+  description: "用户名超过数据库字段长度"
+  request:
+    method: "POST"
+    url: "/api/login"
+    json:
+      username: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      password: "123456"
+  validate:
+    - eq: ["status_code", 401]
+
+- casename: "登录失败-SQL注入尝试"
+  module: "登录模块"
+  description: "尝试SQL注入攻击"
+  request:
+    method: "POST"
+    url: "/api/login"
+    json:
+      username: "admin' OR '1'='1"
+      password: "anything"
+  validate:
+    - eq: ["status_code", 401]  # 参数化查询应防止注入，返回认证失败

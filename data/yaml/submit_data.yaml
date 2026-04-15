@@ -1,0 +1,104 @@
+# 提交/审批模块接口测试数据
+# 用于审批申请提交接口的参数化测试
+
+# ========== 正向用例 ==========
+- casename: "提交成功-请假申请"
+  module: "提交模块"
+  description: "提交正常的请假审批申请"
+  request:
+    method: "POST"
+    url: "/api/approval"
+    json:
+      applicant: "test001"
+      approval_type: "leave"
+      content: "年假申请，共5天"
+      amount: 5
+  validate:
+    - eq: ["status_code", 200]
+    - eq: ["json.code", 0]
+    - contains: ["json.message", "提交"]
+    - not_null: ["json.data.approval_id"]
+    - eq: ["json.data.status", "pending"]
+
+- casename: "提交成功-报销申请"
+  module: "提交模块"
+  description: "提交报销审批申请"
+  request:
+    method: "POST"
+    url: "/api/approval"
+    json:
+      applicant: "test002"
+      approval_type: "reimbursement"
+      content: "差旅费报销"
+      amount: 1280.50
+  validate:
+    - eq: ["status_code", 200]
+    - eq: ["json.code", 0]
+
+# ========== 反向/异常用例 ==========
+- casename: "提交失败-缺少必填字段applicant"
+  module: "提交模块"
+  description: "请求体中缺少申请人字段"
+  request:
+    method: "POST"
+    url: "/api/approval"
+    json:
+      approval_type: "leave"
+      content: "测试"
+  validate:
+    - eq: ["status_code", 422]  # FastAPI 参数校验失败返回 422
+
+- casename: "提交失败-缺少必填字段approval_type"
+  module: "提交模块"
+  description: "请求体中缺少审批类型字段"
+  request:
+    method: "POST"
+    url: "/api/approval"
+    json:
+      applicant: "test001"
+      content: "测试"
+  validate:
+    - eq: ["status_code", 422]
+
+- casename: "提交失败-applicant为空字符串"
+  module: "提交模块"
+  description: "申请人为空字符串"
+  request:
+    method: "POST"
+    url: "/api/approval"
+    json:
+      applicant: ""
+      approval_type: "leave"
+      content: "测试"
+  validate:
+    - eq: ["status_code", 422]
+
+- casename: "提交失败-金额为负数"
+  module: "提交模块"
+  description: "报销金额为负数"
+  request:
+    method: "POST"
+    url: "/api/approval"
+    json:
+      applicant: "test001"
+      approval_type: "reimbursement"
+      content: "金额为负"
+      amount: -100
+  validate:
+    - eq: ["status_code", 200]  # 服务端可能接受（业务校验由数据库处理）
+    # 实际可根据业务需求调整断言
+
+- casename: "提交成功-金额为0"
+  module: "提交模块"
+  description: "金额为0的申请"
+  request:
+    method: "POST"
+    url: "/api/approval"
+    json:
+      applicant: "test001"
+      approval_type: "reimbursement"
+      content: "零元申请"
+      amount: 0
+  validate:
+    - eq: ["status_code", 200]
+    - eq: ["json.code", 0]

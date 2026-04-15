@@ -1,0 +1,120 @@
+# 查询模块接口测试数据
+# 用于员工/用户查询接口的参数化测试
+
+# ========== 正向用例 ==========
+- casename: "查询成功-无参数默认分页"
+  module: "查询模块"
+  description: "不传任何参数，获取默认第一页数据"
+  request:
+    method: "GET"
+    url: "/api/employees"
+    params: {}
+  validate:
+    - eq: ["status_code", 200]
+    - eq: ["json.code", 0]
+    - eq: ["json.data.page", 1]
+    - gt: ["json.data.total", 0]  # 总数大于0
+    - len_gt: ["json.data.items", 0]  # 列表不为空
+
+- casename: "查询成功-指定分页参数"
+  module: "查询模块"
+  description: "指定页码和每页条数"
+  request:
+    method: "GET"
+    url: "/api/employees"
+    params:
+      page: 2
+      size: 5
+  validate:
+    - eq: ["status_code", 200]
+    - eq: ["json.data.page", 2]
+    - eq: ["json.data.size", 5]
+
+- casename: "查询成功-关键词搜索（姓名）"
+  module: "查询模块"
+  description: "按姓名关键词搜索"
+  request:
+    method: "GET"
+    url: "/api/employees"
+    params:
+      keyword: "张"
+  validate:
+    - eq: ["status_code", 200]
+    - jsonpath_contains: ["json.data.items[*].name", "张"]
+
+- casename: "查询成功-关键词搜索（部门）"
+  module: "查询模块"
+  description: "按部门关键词搜索"
+  request:
+    method: "GET"
+    url: "/api/employees"
+    params:
+      keyword: "技术"
+  validate:
+    - eq: ["status_code", 200]
+    - for_each: ["json.data.items", "department", "技术"]
+
+- casename: "查询成功-组合条件（分页+搜索）"
+  module: "查询模块"
+  description: "同时指定分页和搜索条件"
+  request:
+    method: "GET"
+    url: "/api/employees"
+    params:
+      page: 1
+      size: 10
+      keyword: "经理"
+  validate:
+    - eq: ["status_code", 200]
+    - eq: ["json.data.page", 1]
+
+# ========== 边界/异常用例 ==========
+- casename: "查询-空结果搜索"
+  module: "查询模块"
+  description: "搜索一个不存在的数据"
+  request:
+    method: "GET"
+    url: "/api/employees"
+    params:
+      keyword: "不存在的关键词xyz123"
+  validate:
+    - eq: ["status_code", 200]
+    - eq: ["json.data.total", 0]
+    - len_eq: ["json.data.items", 0]
+
+- casename: "查询-page参数为0"
+  module: "查询模块"
+  description: "页码为0时服务端应自动修正为1"
+  request:
+    method: "GET"
+    url: "/api/employees"
+    params:
+      page: 0
+      size: 10
+  validate:
+    - eq: ["status_code", 200]
+    - eq: ["json.data.page", 1]  # 预期修正为1
+
+- casename: "查询-size参数过大"
+  module: "查询模块"
+  description: "每页条数超过最大限制"
+  request:
+    method: "GET"
+    url: "/api/employees"
+    params:
+      size: 1000
+  validate:
+    - eq: ["status_code", 200]  # 服务端应限制最大条数
+    - le: ["json.data.size", 100]
+
+- casename: "查询-page参数为负数"
+  module: "查询模块"
+  description: "页码为负数时应修正为1"
+  request:
+    method: "GET"
+    url: "/api/employees"
+    params:
+      page: -1
+  validate:
+    - eq: ["status_code", 200]
+    - eq: ["json.data.page", 1]

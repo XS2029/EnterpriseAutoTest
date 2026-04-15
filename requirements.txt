@@ -1,0 +1,31 @@
+# Core test framework
+pytest>=7.4.0
+pytest-html>=3.2.0
+
+# API testing
+requests>=2.31.0
+
+# Web automation
+playwright>=1.40.0
+
+# Data processing
+PyYAML>=6.0.1
+openpyxl>=3.1.2
+pandas>=2.0.0
+
+# Database
+pymysql>=1.1.0
+
+# Mock service
+fastapi>=0.104.0
+uvicorn>=0.24.0
+
+# Report
+allure-pytest>=2.13.2
+
+# Utilities
+python-dotenv>=1.0.0
+loguru>=0.7.2
+
+# JSONPath
+jsonpath-ng>=1.6.1
