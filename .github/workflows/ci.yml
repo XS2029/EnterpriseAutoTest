@@ -1,11 +1,10 @@
 name: 企业级自动化测试 CI
 
-# 触发条件：推送到 main 分支 + 定时执行
 on:
   push:
     branches: [ main, master ]
   schedule:
-    # 每天北京时间凌晨 2:00 (UTC 18:00) 执行
+    # 每天北京时间凌晨 2:00 (UTC 18:00) 自动执行
     - cron: '0 18 * * *'
 
 jobs:
@@ -13,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
-    # 关键：在云端启动一个 MySQL 服务
+    # 在 GitHub Actions 中启动一个 MySQL 8.0 服务容器
     services:
       mysql:
         image: mysql:8.0
@@ -39,46 +38,55 @@ jobs:
         with:
           python-version: '3.10'
 
-      # 3. 安装项目依赖
+      # 3. 安装项目依赖（包含 cryptography 以支持 MySQL 8.0 认证）
       - name: 安装项目依赖
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # 4. 初始化测试数据库
+      # 4. 等待 MySQL 就绪并执行数据库初始化脚本
       - name: 初始化测试数据库
         run: |
-          python -c "
-          import pymysql;
-          import sys, time;
-          time.sleep(10);
-          conn = pymysql.connect(host='127.0.0.1', user='root', password='123456', database='test_enterprise');
-          print('✅ 数据库连接成功！')
-          "
-          # 如有需要，可在此处执行 SQL 脚本初始化表结构和数据
+          echo "等待 MySQL 服务完全启动..."
+          sleep 15
+          echo "执行 SQL 初始化脚本..."
+          mysql -h 127.0.0.1 -u root -p123456 < scripts/init_db.sql
+          echo "✅ 数据库表结构及测试数据已导入"
 
       # 5. 安装 Playwright 浏览器驱动
       - name: 安装 Playwright 浏览器
         run: playwright install chromium
 
-      # 6. 启动 Mock 服务
+      # 6. 后台启动 Mock API 服务
       - name: 启动 Mock 服务
         run: |
           nohup python mock_server/mock_api.py > mock_server.log 2>&1 &
+          echo "等待 Mock 服务启动..."
           sleep 5
+          curl --retry 3 --retry-delay 2 http://127.0.0.1:8000/ || echo "Mock 服务未响应，继续执行测试"
 
-      # 7. 执行测试并生成 Allure 数据
+      # 7. 执行所有 API 测试用例并生成 Allure 结果数据
       - name: 执行自动化测试
         run: |
           pytest test_cases/api/ \
             -v \
             --alluredir=./reports/allure-results \
+            --html=./reports/report.html \
+            --self-contained-html \
             --tb=short
 
-      # 8. 上传测试报告（测试失败时上传）
-      - name: 上传测试报告
+      # 8. 上传测试结果（Allure 原始数据），无论测试通过与否都会上传
+      - name: 上传 Allure 测试结果
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: allure-results
           path: reports/allure-results/
+
+      # 9. 上传 HTML 测试报告（可选，方便直接查看）
+      - name: 上传 HTML 测试报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report
+          path: reports/report.html
