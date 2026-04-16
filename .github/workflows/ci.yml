@@ -1,0 +1,84 @@
+name: 企业级自动化测试 CI
+
+# 触发条件：推送到 main 分支 + 定时执行
+on:
+  push:
+    branches: [ main, master ]
+  schedule:
+    # 每天北京时间凌晨 2:00 (UTC 18:00) 执行
+    - cron: '0 18 * * *'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # 关键：在云端启动一个 MySQL 服务
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: 123456
+          MYSQL_DATABASE: test_enterprise
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      # 1. 拉取代码
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      # 2. 设置 Python 环境
+      - name: 设置 Python 环境
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # 3. 安装项目依赖
+      - name: 安装项目依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 4. 初始化测试数据库
+      - name: 初始化测试数据库
+        run: |
+          python -c "
+          import pymysql;
+          import sys, time;
+          time.sleep(10);
+          conn = pymysql.connect(host='127.0.0.1', user='root', password='123456', database='test_enterprise');
+          print('✅ 数据库连接成功！')
+          "
+          # 如有需要，可在此处执行 SQL 脚本初始化表结构和数据
+
+      # 5. 安装 Playwright 浏览器驱动
+      - name: 安装 Playwright 浏览器
+        run: playwright install chromium
+
+      # 6. 启动 Mock 服务
+      - name: 启动 Mock 服务
+        run: |
+          nohup python mock_server/mock_api.py > mock_server.log 2>&1 &
+          sleep 5
+
+      # 7. 执行测试并生成 Allure 数据
+      - name: 执行自动化测试
+        run: |
+          pytest test_cases/api/ \
+            -v \
+            --alluredir=./reports/allure-results \
+            --tb=short
+
+      # 8. 上传测试报告（测试失败时上传）
+      - name: 上传测试报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: reports/allure-results/
