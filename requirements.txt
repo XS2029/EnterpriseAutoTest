@@ -15,6 +15,7 @@ pandas>=2.0.0
 
 # Database
 pymysql>=1.1.0
+cryptography>=41.0.0
 
 # Mock service
 fastapi>=0.104.0
